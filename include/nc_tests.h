@@ -24,6 +24,7 @@ for conditions of use.
 
 
 #define NC_TESTS_MAX_DIMS 1024 /**< NC_MAX_DIMS for tests.  Allows different NC_MAX_DIMS values without breaking this test with a heap or stack overflow. */
+#define MAX_NUM_FORMATS 5 /**< Max number of available binary formats. */
 
 /** Useful define for tests. */
 /** \{ */
@@ -35,6 +36,8 @@ for conditions of use.
 #define THIRTY_TWO_MEG (SIXTEEN_MEG * 2)
 #define SIXTY_FOUR_MEG (SIXTEEN_MEG * 4)
 #define ONE_TWENTY_EIGHT_MEG (SIXTEEN_MEG * 8)
+#define TEST_VAL_42 42
+#define BAD_NAME "dd//d/  "
 /** \} */
 
 #ifdef USE_PNETCDF

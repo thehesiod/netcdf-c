@@ -6,8 +6,10 @@
 
 /* For MinGW Build */
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
 
-#include "config.h"
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -116,16 +118,16 @@ static int ncio_spx_close(ncio *nciop, int doUnlink);
  * @par fd File Descriptor.
  * @return -1 on error, length of file (in bytes) otherwise.
  */
-static size_t nc_get_filelen(const int fd) {
+static off_t nc_get_filelen(const int fd) {
 
-  size_t flen;
+  off_t flen;
 
 #ifdef HAVE_FILE_LENGTH_I64
   __int64 file_len = 0;
   if ((file_len = _filelengthi64(fd)) < 0) {
     return file_len;
   }
-  flen = (size_t)file_len;
+  flen = (off_t)file_len;
 
 #else
   int res = 0;
@@ -241,7 +243,7 @@ fgrow2(const int fd, const off_t len)
   */
 
 
-  size_t file_len = nc_get_filelen(fd);
+  off_t file_len = nc_get_filelen(fd);
   if(file_len < 0) return errno;
   if(len <= file_len)
     return NC_NOERR;
@@ -336,9 +338,6 @@ px_pgin(ncio *const nciop,
 {
 	int status;
 	ssize_t nread;
-    size_t read_count = 0;
-    ssize_t bytes_xfered = 0;
-    void *p = vp;
 #ifdef X_ALIGN
 	assert(offset % X_ALIGN == 0);
 	assert(extent % X_ALIGN == 0);

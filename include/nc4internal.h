@@ -66,6 +66,9 @@ typedef enum {VAR, DIM, ATT} NC_OBJ_T;
 #define X_LONG_MIN	X_INT_MIN
 #define X_LONG_MAX	X_INT_MAX
 #define X_UINT_MAX	4294967295U
+#define X_INT64_MIN	(-9223372036854775807LL-1LL)
+#define X_INT64_MAX	9223372036854775807LL
+#define X_UINT64_MAX	18446744073709551615ULL
 #ifdef WIN32 /* Windows, of course, has to be a *little* different. */
 #define X_FLOAT_MAX	3.402823466e+38f
 #else
@@ -176,9 +179,6 @@ typedef struct NC_VAR_INFO
    int deflate_level;
    nc_bool_t shuffle;           /* True if var has shuffle filter applied */
    nc_bool_t fletcher32;        /* True if var has fletcher32 filter applied */
-   nc_bool_t szip;              /* True if var has szip filter applied */
-   int options_mask;
-   int pixels_per_block;
    size_t chunk_cache_size, chunk_cache_nelems;
    float chunk_cache_preemption;
 #ifdef USE_HDF4
@@ -186,7 +186,11 @@ typedef struct NC_VAR_INFO
    int sdsid;
    int hdf4_data_type;
 #endif /* USE_HDF4 */
-   /* Stuff below for diskless data files. */
+   /* Stuff for arbitrary filters */
+   unsigned int filterid;
+   size_t nparams;
+   unsigned int* params;
+   /* Stuff for diskless data files. */
    void *diskless_data;
 } NC_VAR_INFO_T;
 

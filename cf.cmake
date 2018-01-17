@@ -1,5 +1,26 @@
 # Visual Studio
-#VS=1
+
+case "$1" in
+vs|VS) VS=1 ;;
+linux|nix) unset VS ;;
+*) echo "Must specify env: vs|linux"; exit 1; ;;
+esac
+
+if test "x$VS" = x1 ; then
+  if test "x$2" = xsetup ; then
+    VSSETUP=1
+  else
+    unset VSSETUP
+  fi
+fi
+
+#export NCPATHDEBUG=1
+
+if test "x$VSSETUP" = x1 ; then
+CFG="Debug"
+else
+CFG="Release"
+fi
 
 # Is netcdf-4 and/or DAP enabled?
 NC4=1
@@ -7,8 +28,9 @@ DAP=1
 
 if test "x$VS" != x ; then
 FLAGS="-DCMAKE_PREFIX_PATH=c:/tools/nccmake"
+else
+FLAGS="$FLAGS -DCMAKE_INSTALL_PREFIX=`pwd`/ignore"
 fi
-FLAGS="$FLAGS -DCMAKE_INSTALL_PREFIX=d:/ignore"
 
 if test "x$DAP" = x ; then
 FLAGS="$FLAGS -DENABLE_DAP=false"
@@ -24,6 +46,8 @@ FLAGS="$FLAGS -DENABLE_TESTS=true"
 FLAGS="$FLAGS -DENABLE_EXAMPLES=false"
 #FLAGS="$FLAGS -DENABLE_HDF4=true"
 FLAGS="$FLAGS -DENABLE_DYNAMIC_LOADING=false"
+FLAGS="$FLAGS -DENABLE_WINSOCK2=false"
+#FLAGS="$FLAGS -DENABLE_LARGE_FILE_TESTS=true"
 
 rm -fr build
 mkdir build
@@ -45,7 +69,7 @@ else
 NCLIB="${NCLIB}/build/liblib"
 G="-GUnix Makefiles"
 cmake "${G}" $FLAGS ..
-make all
-make test
+#make all
+#make test
 fi
 exit

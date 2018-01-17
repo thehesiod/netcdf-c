@@ -4,6 +4,10 @@
  */
 /* $Id: dim.c,v 1.83 2010/05/25 17:54:15 dmh Exp $ */
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include "nc3internal.h"
 #include <stdlib.h>
 #include <string.h>
@@ -128,7 +132,6 @@ NC_finddim(const NC_dimarray *ncap, const char *uname, NC_dim **dimpp)
 {
 
    int dimid;
-   NC_dim ** loc;
    char *name;
 
    assert(ncap != NULL);
@@ -139,7 +142,6 @@ NC_finddim(const NC_dimarray *ncap, const char *uname, NC_dim **dimpp)
    {
       int stat;
       dimid = 0;
-      loc = (NC_dim **) ncap->value;
 
       /* normalized version of uname */
       stat = nc_utf8_normalize((const unsigned char *)uname,(unsigned char **)&name);
@@ -358,9 +360,6 @@ NC3_def_dim(int ncid, const char *name, size_t size, int *dimidp)
 			return NC_EUNLIMIT;
 		}
 	}
-
-	if(ncp->dims.nelems >= NC_MAX_DIMS)
-		return NC_EMAXDIMS;
 
 	dimid = NC_finddim(&ncp->dims, name, &dimp);
 	if(dimid != -1)

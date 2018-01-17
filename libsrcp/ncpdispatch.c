@@ -9,6 +9,7 @@
 #include <mpi.h>
 #include "nc.h"
 #include "ncdispatch.h"
+
 /* Must follow netcdf.h */
 #include <pnetcdf.h>
 
@@ -50,15 +51,15 @@ NCP_create(const char *path, int cmode,
 
     /* Check the cmode for only valid flags*/
     if(cmode & ~LEGAL_CREATE_FLAGS)
-	return NC_EINVAL;
+	{res = NC_EINVAL; goto done;}
 
     /* Cannot have both MPIO flags */
     if((cmode & (NC_MPIIO|NC_MPIPOSIX)) == (NC_MPIIO|NC_MPIPOSIX))
-	return NC_EINVAL;
+	{res = NC_EINVAL; goto done;}
 
     /* Cannot have both NC_64BIT_OFFSET & NC_64BIT_DATA */
     if((cmode & (NC_64BIT_OFFSET|NC_64BIT_DATA)) == (NC_64BIT_OFFSET|NC_64BIT_DATA))
- 	return NC_EINVAL;
+	{res = NC_EINVAL; goto done;}
 
     default_format = nc_get_default_format();
     /* if (default_format == NC_FORMAT_CLASSIC) then we respect the format set in cmode */
@@ -72,14 +73,17 @@ NCP_create(const char *path, int cmode,
     }
 
     /* No MPI environment initialized */
-    if (mpidata == NULL) return NC_ENOPAR;
+    if (mpidata == NULL)
+	{res = NC_ENOPAR; goto done;}
 
     comm = ((NC_MPI_INFO *)mpidata)->comm;
     info = ((NC_MPI_INFO *)mpidata)->info;
 
     /* Create our specific NCP_INFO instance */
+
     nc5 = (NCP_INFO*)calloc(1,sizeof(NCP_INFO));
-    if(nc5 == NULL) return NC_ENOMEM;
+    if(nc5 == NULL)
+	{res = NC_ENOMEM; goto done;}
 
     /* Link nc5 and nc */
     NCP_DATA_SET(nc,nc5);
@@ -97,9 +101,11 @@ NCP_create(const char *path, int cmode,
     */
     /* PnetCDF recognizes the flags below for create and ignores NC_LOCK and  NC_SHARE */
     cmode &= (NC_WRITE | NC_NOCLOBBER | NC_SHARE | NC_64BIT_OFFSET | NC_64BIT_DATA);
+
     res = ncmpi_create(comm, path, cmode, info, &(nc->int_ncid));
 
     if(res && nc5 != NULL) free(nc5); /* reclaim allocated space */
+done:
     return res;
 }
 
@@ -116,16 +122,15 @@ NCP_open(const char *path, int cmode,
 
     /* Check the cmode for only valid flags*/
     if(cmode & ~LEGAL_OPEN_FLAGS)
-	return NC_EINVAL;
+	{res = NC_EINVAL; goto done;}
 
     /* Cannot have both MPIO flags */
     if((cmode & (NC_MPIIO|NC_MPIPOSIX)) == (NC_MPIIO|NC_MPIPOSIX))
-	return NC_EINVAL;
+	{res = NC_EINVAL; goto done;}
 
     /* Appears that this comment is wrong; allow 64 bit offset*/
     /* Cannot have 64 bit offset flag */
-    /* if(cmode & (NC_64BIT_OFFSET)) return NC_EINVAL; */
-
+    /* if(cmode & (NC_64BIT_OFFSET)) {res = NC_EINVAL; goto done;} */
     if(mpidata != NULL) {
         comm = ((NC_MPI_INFO *)mpidata)->comm;
         info = ((NC_MPI_INFO *)mpidata)->info;
@@ -145,7 +150,7 @@ NCP_open(const char *path, int cmode,
 
     /* Create our specific NCP_INFO instance */
     nc5 = (NCP_INFO*)calloc(1,sizeof(NCP_INFO));
-    if(nc5 == NULL) return NC_ENOMEM;
+    if(nc5 == NULL) {res = NC_ENOMEM; goto done;}
 
     /* Link nc5 and nc */
     NCP_DATA_SET(nc,nc5);
@@ -157,7 +162,7 @@ NCP_open(const char *path, int cmode,
 	res = ncmpi_begin_indep_data(nc->int_ncid);
 	nc5->pnetcdf_access_mode = NC_INDEPENDENT;
     }
-
+done:
     return res;
 }
 
@@ -189,7 +194,7 @@ NCP__enddef(int ncid, size_t h_minfree, size_t v_align, size_t v_minfree, size_t
     assert(nc5);
 
     /* causes implicitly defined warning; may be because of old installed pnetcdf? */
-#if 0
+#if 1
     /* In PnetCDF ncmpi__enddef() is only implemented in v1.5.0 and later */
     status = ncmpi__enddef(nc->int_ncid, mpi_h_minfree, mpi_v_align,
                            mpi_v_minfree, mpi_r_align);
@@ -441,6 +446,7 @@ NCP_get_att(
     if(status != NC_NOERR) return status;
 
     status = NCP_inq_att(ncid,varid,name,&xtype,NULL);
+    if(status != NC_NOERR) return status;
 
     if(memtype == NC_NAT) memtype = xtype;
 
@@ -487,6 +493,14 @@ NCP_put_att(
     int status;
     MPI_Offset mpilen;
 
+    /* check if ncid is valid */
+    status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR) return status;
+
+    /* check if varid is valid */
+    status = ncmpi_inq_varnatts(nc->int_ncid, varid, NULL);
+    if (status != NC_NOERR) return status;
+
     if (!name || (strlen(name) > NC_MAX_NAME))
 	return NC_EBADNAME;
 
@@ -494,9 +508,6 @@ NCP_put_att(
        systems with signed size_t). */
     if(((unsigned long) len) > X_INT_MAX)
 	return NC_EINVAL;
-
-    status = NC_check_id(ncid, &nc);
-    if(status != NC_NOERR) return status;
 
     mpilen = len;
 
@@ -1146,7 +1157,7 @@ NCP_inq_var_all(int ncid, int varid, char *name, nc_type *xtypep,
                int *shufflep, int *deflatep, int *deflate_levelp,
                int *fletcher32p, int *contiguousp, size_t *chunksizesp,
                int *no_fill, void *fill_valuep, int *endiannessp,
-	       int *options_maskp, int *pixels_per_blockp)
+	       unsigned int* idp, size_t* nparamsp, unsigned int* params)
 {
     int status;
     NC* nc;
@@ -1162,7 +1173,9 @@ NCP_inq_var_all(int ncid, int varid, char *name, nc_type *xtypep,
     if(contiguousp) *contiguousp = NC_CONTIGUOUS;
     if(no_fill) *no_fill = 1;
     if(endiannessp) return NC_ENOTNC4;
-    if(options_maskp) return NC_ENOTNC4;
+    if(idp) return NC_ENOTNC4;
+    if(nparamsp) return NC_ENOTNC4;
+    if(params) return NC_ENOTNC4;
     return NC_NOERR;
 }
 
@@ -1491,6 +1504,12 @@ NCP_def_var_endian(int ncid, int varid, int endianness)
     return NC_ENOTNC4;
 }
 
+static int
+NCP_def_var_filter(int ncid, int varid, unsigned int id, size_t nparams, const unsigned int* parms)
+{
+    return NC_ENOTNC4;
+}
+
 #endif /*USE_NETCDF4*/
 
 /**************************************************/
@@ -1582,6 +1601,7 @@ NCP_def_var_fletcher32,
 NCP_def_var_chunking,
 NCP_def_var_fill,
 NCP_def_var_endian,
+NCP_def_var_filter,
 NCP_set_var_chunk_cache,
 NCP_get_var_chunk_cache,
 #endif /*USE_NETCDF4*/

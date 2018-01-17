@@ -18,17 +18,11 @@ lib_LTLIBRARIES = libnetcdf.la
 # for information regarding incrementing `-version-info`.
 ##
 
-libnetcdf_la_LDFLAGS = -version-info 11:4:0 ${NOUNDEFINED}
+libnetcdf_la_LDFLAGS = -version-info 13:0:0
 
 libnetcdf_la_CPPFLAGS = ${AM_CPPFLAGS}
 libnetcdf_la_LIBADD =
 CLEANFILES =
-
-# Turn on some extra stuff when building a DLL for windows.
-if BUILD_DLL
-libnetcdf_la_LDFLAGS += -no-undefined -Wl,--output-def,netcdfdll.def
-libnetcdf_la_CPPFLAGS += -DDLL_EXPORT
-endif # BUILD_DLL
 
 # The v2 API...
 if BUILD_V2
@@ -69,6 +63,11 @@ libnetcdf_la_LIBADD += ${top_builddir}/libsrc4/libnetcdf4.la
 # libnetcdf_la_LIBADD += ${top_builddir}/libdiskless/libdiskless.la
 
 endif #USE_NETCDF4
+
+if ISCYGWIN
+# Force binary mode for file read/write
+AM_LDFLAGS += -lbinmode
+endif
 
 # We need at least one source file
 libnetcdf_la_SOURCES = nc_initialize.c
